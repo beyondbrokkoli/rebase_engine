@@ -73,12 +73,12 @@ print("\n[LUA VM] Thread 5 Awoken. Binding hardware...")
 
 local t_str, c_str = C_Bridge.get_boards()
 
--- FIX: Append "ULL" to the strings so the FFI constructor 
--- knows to treat them as 64-bit unsigned long longs.
-local telemetry_addr = ffi.new("uint64_t", t_str .. "ULL")
-local control_addr   = ffi.new("uint64_t", c_str .. "ULL")
+-- SURGICAL FIX: Use tonumber() with the "ULL" trick to parse 
+-- the decimal strings into 64-bit cdata integers.
+local telemetry_addr = tonumber(t_str .. "ULL")
+local control_addr   = tonumber(c_str .. "ULL")
 
--- Now we can safely cast these 64-bit integers to pointers
+-- Now we can safely cast these 64-bit addresses back to pointers
 local telemetry_ptr = ffi.cast("EngineTelemetryBoard*", telemetry_addr)
 local control_ptr   = ffi.cast("EngineControlBoard*", control_addr)
 
