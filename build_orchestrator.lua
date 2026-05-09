@@ -177,6 +177,9 @@ local order = get_sorted_files()
 
 -- Explicitly add C backend to the snapshot since require() won't find it
 table.insert(order, "main.c")
+table.insert(order, "memory.c")
+table.insert(order, "memory.h")
+table.insert(order, "control_board.h")
 
 for _, src in ipairs(order) do
     local f = io.open(src, "r")

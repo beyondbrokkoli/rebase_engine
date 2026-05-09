@@ -80,25 +80,47 @@ pcall(function() DebugProxy.BindHardware(telemetry_ptr, control_ptr) end)
 -- ========================================================
 -- 4.5 THE INJECTION PATCH (The "Heist" Signal)
 -- ========================================================
--- This awakens the C-Overlord by populating g_MemMap
+local function ptr2str(ptr)
+    if ptr == nil then return "0" end
+    local cdata_num = ffi.cast("uint64_t", ffi.cast("uintptr_t", ptr))
+    return string.match(tostring(cdata_num), "%d+")
+end
+
 print("[LUA VM] Preparing VRAM Injection Payload...")
+
+local Anchors = {} -- GC Safety
+local function sim_rebar_float(n) 
+    local mem = ffi.new("float[?]", n)
+    table.insert(Anchors, mem)
+    return ffi.cast("float*", mem) 
+end
 
 local payload = ffi.new("VramInjectionBoard")
 payload.max_particles = 15000000
+local count = payload.max_particles
 
--- Headless Simulation: Create the arrays Lua-side to simulate ReBAR
--- Note: In Phase 2, these will be replaced by your vulkan_allocator.lua pointers
-local particle_bytes = payload.max_particles * ffi.sizeof("float")
-payload.px_A = ffi.cast("float*", ffi.new("float[?]", payload.max_particles))
-payload.px_B = ffi.cast("float*", ffi.new("float[?]", payload.max_particles))
-payload.py_A = ffi.cast("float*", ffi.new("float[?]", payload.max_particles))
-payload.py_B = ffi.cast("float*", ffi.new("float[?]", payload.max_particles))
--- [Note: In the full rebase, you'll fill ALL 14 pointers here]
+-- [PHASE A]
+payload.px_A, payload.py_A, payload.pz_A = sim_rebar_float(count), sim_rebar_float(count), sim_rebar_float(count)
+payload.vx_A, payload.vy_A, payload.vz_A = sim_rebar_float(count), sim_rebar_float(count), sim_rebar_float(count)
+payload.seed_A, payload.mat_A = sim_rebar_float(count), sim_rebar_float(count)
 
--- Submit the payload to C. This flips map->is_initialized to true.
-C_Bridge.inject_vram(payload)
+-- [PHASE B]
+payload.px_B, payload.py_B, payload.pz_B = sim_rebar_float(count), sim_rebar_float(count), sim_rebar_float(count)
+payload.vx_B, payload.vy_B, payload.vz_B = sim_rebar_float(count), sim_rebar_float(count), sim_rebar_float(count)
+payload.seed_B, payload.mat_B = sim_rebar_float(count), sim_rebar_float(count)
+
+-- [RENDER & TOPOLOGY]
+payload.render_A = ffi.new("VertexAoS[?]", count); table.insert(Anchors, payload.render_A)
+payload.render_B = ffi.new("VertexAoS[?]", count); table.insert(Anchors, payload.render_B)
+payload.grid_A   = ffi.new("uint32_t[?]", 2097152); table.insert(Anchors, payload.grid_A)
+payload.grid_B   = ffi.new("uint32_t[?]", 2097152); table.insert(Anchors, payload.grid_B)
+payload.draw_cmd_A = ffi.new("VkDrawIndirectCommand"); table.insert(Anchors, payload.draw_cmd_A)
+payload.draw_cmd_B = ffi.new("VkDrawIndirectCommand"); table.insert(Anchors, payload.draw_cmd_B)
+
+-- THE HEIST: Send the decimal string to C
+C_Bridge.inject_vram(ptr2str(payload))
+
 print("[LUA VM] Injection successful. C-Core Awakened.")
-
 -- ========================================================
 -- 5. THE CO-OVERLORD LOOP
 -- ========================================================
