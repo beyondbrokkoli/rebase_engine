@@ -68,7 +68,8 @@ local function compile_engine(platform)
 
         print("\n[3/3] Compiling Vulkan Host (.exe) ...")
         local win_frontend = string.format(
-            'gcc main.c -O3 -I"%s/Include" -L"%s/Lib" -lws2_32 -lglfw3 -lvulkan-1 -lluajit-5.1 -o swarm_gpu.exe',
+            -- 'gcc main.c -O3 -I"%s/Include" -L"%s/Lib" -lws2_32 -lglfw3 -lvulkan-1 -lluajit-5.1 -o swarm_gpu.exe',
+            'gcc main.c memory.c -O3 -I"%s/Include" -L"%s/Lib" -lws2_32 -lglfw3 -lvulkan-1 -lluajit-5.1 -o swarm_gpu.exe',
             VULKAN_SDK_PATH, VULKAN_SDK_PATH
         )
         os.execute(win_frontend)
