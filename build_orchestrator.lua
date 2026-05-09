@@ -47,7 +47,8 @@ local function compile_engine(platform)
         -- os.execute(linux_backend)
 
         print("\n[3/3] Compiling Vulkan Host (ELF Binary) ...")
-        local linux_frontend = "gcc main.c -O3 -I/usr/include/luajit-2.1 -lglfw -lvulkan -lluajit-5.1 -o swarm_gpu"
+        --local linux_frontend = "gcc main.c -O3 -I/usr/include/luajit-2.1 -lglfw -lvulkan -lluajit-5.1 -o swarm_gpu"
+        local linux_frontend = "gcc main.c memory.c -O3 -I/usr/include/luajit-2.1 -lglfw -lvulkan -lluajit-5.1 -o swarm_gpu"
         os.execute(linux_frontend)
 
     elseif platform == "win" then

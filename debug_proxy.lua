@@ -173,8 +173,9 @@ function DebugProxy.PrintConsole()
         end
 
         local size_mb = tonumber(b.size_bytes) / (1024 * 1024)
-        local addr_hex = string.format("0x%016llX", tonumber(b.ptr_address))
-
+        -- local addr_hex = string.format("0x%016llX", tonumber(b.ptr_address))
+        -- REPLACE WITH THIS:
+        local addr_hex = tostring(ffi.cast("void*", b.ptr_address))
         print(string.format("%s %-15s %-20s %.2f", active_marker, name, addr_hex, size_mb))
     end
     print("--------------------------------------------------")
