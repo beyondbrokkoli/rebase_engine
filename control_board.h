@@ -13,7 +13,7 @@
 
 // Sequence Lock for safe 16-float asynchronous transfers
 typedef struct {
-    _Atomic uint32_t sequence; 
+    _Atomic uint32_t sequence;
     float matrix[16];          // Column-major viewProj
 } AsyncCameraMatrix;
 
@@ -40,11 +40,11 @@ typedef struct {
 // The Physics & Shader Payload (The Frictionless Sandbox)
 typedef struct {
     _Atomic int swarm_state;       // 0-7 State Machine
-    
+
     // Generic Push Constants / AVX2 Variables
     // Lua defines the mapping (e.g., [0]=gravity, [1]=metal, [2]=bass)
     // C blindly copies this array to vkCmdPushConstants every frame.
-    _Atomic float params[VIBE_MAX_USER_PARAMS]; 
+    _Atomic float params[VIBE_MAX_USER_PARAMS];
 } SimulationBoard;
 
 // Asynchronous Input State (For Lua to read OS events from C, or vice versa)

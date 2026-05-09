@@ -56,14 +56,14 @@ typedef struct {
 // Lua fills this struct with the mapped pointers from vkMapMemory
 typedef struct {
     uint32_t max_particles;
-    
+
     // Physics Streams
     float *px_A, *py_A, *pz_A, *vx_A, *vy_A, *vz_A, *seed_A, *mat_A;
     float *px_B, *py_B, *pz_B, *vx_B, *vy_B, *vz_B, *seed_B, *mat_B;
-    
+
     // Render Streams
     VertexAoS *render_A, *render_B;
-    
+
     // Topo & Cmds
     uint32_t *grid_A, *grid_B;
     VkDrawIndirectCommand *draw_cmd_A, *draw_cmd_B;

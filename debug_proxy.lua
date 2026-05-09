@@ -6,7 +6,7 @@ local ffi = require("ffi")
 ffi.cdef[[
     // --- Asynchronous Data Structures ---
     typedef struct {
-        uint32_t sequence; 
+        uint32_t sequence;
         float matrix[16];
     } AsyncCameraMatrix;
 
@@ -76,7 +76,7 @@ local DebugProxy = {
 -- ========================================================
 function DebugProxy.Infect(module_name, target_module)
     if not DebugProxy.IS_ACTIVE then return target_module end
-    
+
     local proxy = {}
     for key, value in pairs(target_module) do
         if type(value) == "function" then
@@ -84,15 +84,15 @@ function DebugProxy.Infect(module_name, target_module)
                 if DebugProxy.telemetry_ptr then
                     DebugProxy.telemetry_ptr.bridge_crossings = DebugProxy.telemetry_ptr.bridge_crossings + 1
                 end
-                
+
                 local start_time = os.clock()
                 local results = { value(...) }
                 local elapsed_ms = (os.clock() - start_time) * 1000
-                
+
                 if elapsed_ms > 1.0 then
                     print(string.format("[SPIKE] %s.%s took %.3f ms", module_name, key, elapsed_ms))
                 end
-                
+
                 return unpack(results)
             end
         else
@@ -116,7 +116,7 @@ end
 -- ========================================================
 function DebugProxy.KeyPressed(key)
     if not DebugProxy.IS_ACTIVE or not DebugProxy.control_ptr then return end
-    
+
     if key == "f1" then
         DebugProxy.show_ui = not DebugProxy.show_ui
     elseif key == "p" then
@@ -138,12 +138,12 @@ end
 -- ========================================================
 function DebugProxy.PrintConsole()
     if not DebugProxy.IS_ACTIVE or not DebugProxy.show_ui or not DebugProxy.telemetry_ptr then return end
-    
+
     local tb = DebugProxy.telemetry_ptr
     local cb = DebugProxy.control_ptr
 
     local phase_char = (tb.current_c_phase == 0) and "A" or "B"
-    
+
     -- Updated to route through .core namespace
     local run_state = (cb.core.debug_frame_step == 0) and "FREE RUN" 
                    or (cb.core.debug_frame_step == 1 and "PAUSED" or "STEPPING")

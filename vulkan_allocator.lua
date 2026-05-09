@@ -2,7 +2,7 @@ local ffi = require("ffi")
 local bit = require("bit")
 
 local function init_allocator(vk)
-    
+
     local function find_smart_buffer_memory(physicalDevice, typeFilter)
         local memProperties = ffi.new("VkPhysicalDeviceMemoryProperties")
         vk.vkGetPhysicalDeviceMemoryProperties(physicalDevice, memProperties)

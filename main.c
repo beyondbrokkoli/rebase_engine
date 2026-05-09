@@ -61,8 +61,8 @@ vibe_mutex_t g_worker_mutex;
 vibe_cond_t  g_worker_cv_start;
 vibe_cond_t  g_worker_cv_done;
 
-int g_workers_active = 0; 
-int g_worker_sig = 0; 
+int g_workers_active = 0;
+int g_worker_sig = 0;
 vibe_thread_t g_worker_threads[NUM_WORKERS];
 vibe_thread_t g_lua_thread;
 
@@ -75,17 +75,17 @@ THREAD_FUNC worker_loop(void* arg) {
         while (g_worker_sig == 0) {
             vibe_cond_wait(&g_worker_cv_start, &g_worker_mutex);
         }
-        
+
         if (g_worker_sig == 2) {
             vibe_mutex_unlock(&g_worker_mutex);
-            break; 
+            break;
         }
         vibe_mutex_unlock(&g_worker_mutex);
 
         // --- SIMULATED AVX2 CRUNCH ZONE ---
         // In the real engine, this is where vmath_step_swarm_chunk executes.
         // We simulate work so the threads don't instantly return.
-        SLEEP_MS(2); 
+        SLEEP_MS(2);
 
         // --- WORKER DONE ---
         vibe_mutex_lock(&g_worker_mutex);
@@ -104,11 +104,11 @@ THREAD_FUNC worker_loop(void* arg) {
 static int l_vibe_get_boards(lua_State* L) {
     void *telemetry_ptr, *control_ptr;
     vibe_get_boards(&telemetry_ptr, &control_ptr);
-    
+
     char t_str[64], c_str[64];
     vibe_mem_ptr2str(telemetry_ptr, t_str, sizeof(t_str));
     vibe_mem_ptr2str(control_ptr, c_str, sizeof(c_str));
-    
+
     lua_pushstring(L, t_str);
     lua_pushstring(L, c_str);
     return 2;
@@ -117,7 +117,7 @@ static int l_vibe_get_boards(lua_State* L) {
 static int l_vibe_inject_vram(lua_State* L) {
     // 1. Grab the decimal string from Lua
     const char* ptr_str = luaL_checkstring(L, 1);
-    
+
     // 2. Reconstruct the raw pointer from the decimal heist
     VramInjectionBoard* payload = (VramInjectionBoard*)(uintptr_t)strtoull(ptr_str, NULL, 10);
 
@@ -162,7 +162,7 @@ THREAD_FUNC lua_co_overlord_loop(void* arg) {
 int main(int argc, char** argv) {
     printf("[C-OVERLORD] Booting Headless VibeEngine...\n");
 
-    // FIX: C no longer initializes memory here. 
+    // FIX: C no longer initializes memory here.
     // It waits for Lua to call C_Bridge.inject_vram().
     g_ControlBoard.core.is_running = 1; // Namespace Fix
 
@@ -170,7 +170,7 @@ int main(int argc, char** argv) {
     vibe_mutex_init(&g_worker_mutex);
     vibe_cond_init(&g_worker_cv_start);
     vibe_cond_init(&g_worker_cv_done);
-    
+
     for (int i = 0; i < NUM_WORKERS; i++) {
         g_worker_threads[i] = vibe_thread_start(worker_loop, (void*)(intptr_t)i);
     }
@@ -185,15 +185,15 @@ int main(int argc, char** argv) {
     // ========================================================
     // THE C-OVERLORD LOOP
     // ========================================================
-while (g_ControlBoard.core.is_running) { // Namespace Fix
-        
+    while (g_ControlBoard.core.is_running) { // Namespace Fix
+
         // SURGICAL GUARD: Do not dispatch workers if memory isn't ready
         VibeMemoryMap* map = vibe_mem_get_map();
         if (!map->is_initialized) {
             // Heartbeat while waiting for Lua to finish Vulkan init
             printf("\r[C-OVERLORD] Waiting for VRAM Injection... ");
             fflush(stdout);
-            SLEEP_MS(100); 
+            SLEEP_MS(100);
             continue;
         }
 
@@ -202,7 +202,7 @@ while (g_ControlBoard.core.is_running) { // Namespace Fix
         while (g_workers_active > 0) {
             vibe_cond_wait(&g_worker_cv_done, &g_worker_mutex);
         }
-        g_worker_sig = 0; 
+        g_worker_sig = 0;
         vibe_mutex_unlock(&g_worker_mutex);
 
         // --- 3. FLIP THE PHASES ---
@@ -221,12 +221,12 @@ while (g_ControlBoard.core.is_running) { // Namespace Fix
     // TEARDOWN
     // ========================================================
     printf("\n[C-OVERLORD] Shutting down...\n");
-    
+
     vibe_mutex_lock(&g_worker_mutex);
     g_worker_sig = 2;
     vibe_cond_broadcast(&g_worker_cv_start);
     vibe_mutex_unlock(&g_worker_mutex);
-    
+
     for (int i = 0; i < NUM_WORKERS; i++) {
         vibe_thread_join(g_worker_threads[i]);
     }

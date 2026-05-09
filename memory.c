@@ -74,7 +74,7 @@ void vibe_mem_inject_vram(VramInjectionBoard* payload) {
 
     g_TelemetryBoard.current_c_phase = 0;
     g_MemMap.is_initialized = 1;
-    
+
     printf("[C-CORE] VRAM Injection Successful. AVX2 mapped to ReBAR.\n");
 }
 
@@ -108,25 +108,25 @@ void vibe_audit_memory_state(void) {
     }
 
     int phase = g_TelemetryBoard.current_c_phase;
-    
+
     printf("\n=== VIBE ENGINE MEGALOMANIACAL TELEMETRY (C-AUDIT) ===\n");
     printf("C-Core Phase Target: [%c]\n", phase == 0 ? 'A' : 'B');
     printf("--------------------------------------------------\n");
     printf("%-4s %-15s %-20s %s\n", "", "BUFFER", "ADDRESS", "SIZE (MB)");
     printf("--------------------------------------------------\n");
-    
+
     for (int i = 0; i < 14; i++) {
         BufferTelemetry* b = &g_TelemetryBoard.buffers[i];
         double size_mb = (double)b->size_bytes / (1024.0 * 1024.0);
-        
+
         const char* active_marker = "    ";
         size_t len = strlen(b->name);
         if (len >= 2) {
             if (phase == 0 && b->name[len-1] == 'A' && b->name[len-2] == '_') active_marker = ">>> ";
             if (phase == 1 && b->name[len-1] == 'B' && b->name[len-2] == '_') active_marker = ">>> ";
         }
-        
-        printf("%s %-15s 0x%016llX %.2f\n", 
+
+        printf("%s %-15s 0x%016llX %.2f\n",
                active_marker, b->name, (unsigned long long)b->ptr_address, size_mb);
     }
     printf("--------------------------------------------------\n\n");
