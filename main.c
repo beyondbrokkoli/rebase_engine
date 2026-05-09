@@ -114,8 +114,19 @@ static int l_vibe_get_boards(lua_State* L) {
     return 2;
 }
 
+// New bridge function to receive the VRAM payload from Lua
+static int l_vibe_inject_vram(lua_State* L) {
+    // Lua passes the cdata pointer of the VramInjectionBoard
+    VramInjectionBoard* payload = (VramInjectionBoard*)lua_touserdata(L, 1);
+    if (payload) {
+        vibe_mem_inject_vram(payload);
+    }
+    return 0;
+}
+
 static const luaL_Reg engine_funcs[] = {
-    {"get_boards", l_vibe_get_boards},
+    {"get_boards",  l_vibe_get_boards},
+    {"inject_vram", l_vibe_inject_vram}, // The Injection Hook
     {NULL, NULL}
 };
 
@@ -147,9 +158,9 @@ THREAD_FUNC lua_co_overlord_loop(void* arg) {
 int main(int argc, char** argv) {
     printf("[C-OVERLORD] Booting Headless VibeEngine...\n");
 
-    // 1. ALLOCATE THE MEMORY STREAMS
-    vibe_mem_init(15000000); 
-    g_ControlBoard.is_running = 1;
+    // FIX: C no longer initializes memory here. 
+    // It waits for Lua to call C_Bridge.inject_vram().
+    g_ControlBoard.core.is_running = 1; // Namespace Fix
 
     // 2. BOOT THE AVX2 THREAD POOL
     vibe_mutex_init(&g_worker_mutex);
@@ -170,14 +181,17 @@ int main(int argc, char** argv) {
     // ========================================================
     // THE C-OVERLORD LOOP
     // ========================================================
-    while (g_ControlBoard.is_running) {
+while (g_ControlBoard.core.is_running) { // Namespace Fix
         
-        // --- 1. DISPATCH WORKERS (Calculate the Future) ---
-        vibe_mutex_lock(&g_worker_mutex);
-        g_workers_active = NUM_WORKERS;
-        g_worker_sig = 1; 
-        vibe_cond_broadcast(&g_worker_cv_start);
-        vibe_mutex_unlock(&g_worker_mutex);
+        // SURGICAL GUARD: Do not dispatch workers if memory isn't ready
+        VibeMemoryMap* map = vibe_mem_get_map();
+        if (!map->is_initialized) {
+            // Heartbeat while waiting for Lua to finish Vulkan init
+            printf("\r[C-OVERLORD] Waiting for VRAM Injection... ");
+            fflush(stdout);
+            SLEEP_MS(100); 
+            continue;
+        }
 
         // --- 2. WAIT FOR AVX2 WORKERS TO FINISH ---
         vibe_mutex_lock(&g_worker_mutex);

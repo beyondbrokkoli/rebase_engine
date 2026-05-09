@@ -1,8 +1,52 @@
 local ffi = require("ffi")
 
--- 1. THE C-STRUCT CONTRACT
--- We mirror the exact C headers here so Lua can read the memory blindly.
+-- ========================================================
+-- 1. THE FFI SCHEMA (Stripped of _Atomic for LuaJIT)
+-- ========================================================
 ffi.cdef[[
+    // --- Asynchronous Data Structures ---
+    typedef struct {
+        uint32_t sequence; 
+        float matrix[16];
+    } AsyncCameraMatrix;
+
+    // --- Sub-System Boards ---
+    typedef struct {
+        int is_running;
+        int force_draw_buffer;
+        int debug_frame_step;
+    } CoreStateBoard;
+
+    typedef struct {
+        uint32_t total_active_count;
+        uint32_t cpu_core_offset;    uint32_t cpu_core_count;
+        uint32_t gpu_hunters_offset; uint32_t gpu_hunters_count;
+        uint32_t gpu_boids_offset;   uint32_t gpu_boids_count;
+        uint32_t gpu_meteors_offset; uint32_t gpu_meteors_count;
+    } AtlasBoard;
+
+    typedef struct {
+        int swarm_state;
+        float params[16];
+    } SimulationBoard;
+
+    typedef struct {
+        uint32_t mouse_buttons;
+        float mouse_x;
+        float mouse_y;
+        uint32_t key_states;
+    } InputBoard;
+
+    // --- The Master Control Board ---
+    typedef struct {
+        CoreStateBoard  core;
+        AtlasBoard      atlas;
+        SimulationBoard sim;
+        InputBoard      input;
+        AsyncCameraMatrix camera;
+    } EngineControlBoard;
+
+    // --- Megalomaniacal Telemetry Layer ---
     typedef struct {
         uint64_t ptr_address;
         size_t size_bytes;
@@ -11,26 +55,25 @@ ffi.cdef[[
     } BufferTelemetry;
 
     typedef struct {
-        _Atomic uint64_t bridge_crossings; 
-        _Atomic int current_c_phase;       
+        uint64_t bridge_crossings;
+        int current_c_phase;
         BufferTelemetry buffers[14];
     } EngineTelemetryBoard;
-
-    typedef struct {
-        _Atomic int is_running;
-        _Atomic int debug_frame_step; 
-        // ... (other control fields omitted for brevity, proxy only needs the stepper) ...
-    } EngineControlBoard;
 ]]
 
+-- ========================================================
+-- 2. THE PROXY STATE
+-- ========================================================
 local DebugProxy = {
     IS_ACTIVE = true,
     show_ui = true,
-    telemetry_ptr = nil, -- Bound via FFI to g_TelemetryBoard
-    control_ptr = nil    -- Bound via FFI to g_ControlBoard
+    telemetry_ptr = nil,
+    control_ptr = nil
 }
 
--- 2. THE INFECTOR (Zero-Overhead Wrapper)
+-- ========================================================
+-- 3. THE INFECTOR
+-- ========================================================
 function DebugProxy.Infect(module_name, target_module)
     if not DebugProxy.IS_ACTIVE then return target_module end
     
@@ -38,18 +81,14 @@ function DebugProxy.Infect(module_name, target_module)
     for key, value in pairs(target_module) do
         if type(value) == "function" then
             proxy[key] = function(...)
-                -- The Megalomaniacal Audit: Track exactly how many times we cross the bridge
                 if DebugProxy.telemetry_ptr then
-                    -- Note: In a real C atomic, this would be an atomic increment. 
-                    -- For Lua reading/writing it's a rough approximation, but good enough for UI.
                     DebugProxy.telemetry_ptr.bridge_crossings = DebugProxy.telemetry_ptr.bridge_crossings + 1
                 end
                 
                 local start_time = os.clock()
                 local results = { value(...) }
                 local elapsed_ms = (os.clock() - start_time) * 1000
-
-                -- Only spam console if a C-crossing took longer than 1ms
+                
                 if elapsed_ms > 1.0 then
                     print(string.format("[SPIKE] %s.%s took %.3f ms", module_name, key, elapsed_ms))
                 end
@@ -63,52 +102,61 @@ function DebugProxy.Infect(module_name, target_module)
     return proxy
 end
 
--- 3. BIND THE HARDWARE BOARDS
+-- ========================================================
+-- 4. HARDWARE BINDING
+-- ========================================================
 function DebugProxy.BindHardware(telemetry_cdata, control_cdata)
     DebugProxy.telemetry_ptr = ffi.cast("EngineTelemetryBoard*", telemetry_cdata)
     DebugProxy.control_ptr = ffi.cast("EngineControlBoard*", control_cdata)
     print("[TELEMETRY] Omniscient Proxy successfully bound to AVX2 Engine Core.")
 end
 
--- 4. THE TIME MACHINE CONTROLS (Input Hooks)
+-- ========================================================
+-- 5. TIME MACHINE INPUT HOOKS (Now using .core routing)
+-- ========================================================
 function DebugProxy.KeyPressed(key)
     if not DebugProxy.IS_ACTIVE or not DebugProxy.control_ptr then return end
-
+    
     if key == "f1" then
         DebugProxy.show_ui = not DebugProxy.show_ui
     elseif key == "p" then
-        -- Toggle Pause/Free-Run
-        local current = DebugProxy.control_ptr.debug_frame_step
-        DebugProxy.control_ptr.debug_frame_step = (current == 0) and 1 or 0
-        print("[TIME MACHINE] State: " .. (DebugProxy.control_ptr.debug_frame_step == 0 and "FREE RUN" or "PAUSED"))
+        -- Updated to route through .core namespace
+        local current = DebugProxy.control_ptr.core.debug_frame_step
+        DebugProxy.control_ptr.core.debug_frame_step = (current == 0) and 1 or 0
+        print("[TIME MACHINE] State: " .. (DebugProxy.control_ptr.core.debug_frame_step == 0 and "FREE RUN" or "PAUSED"))
     elseif key == "]" then
-        -- Step Exactly One Frame
-        if DebugProxy.control_ptr.debug_frame_step == 1 then
-            DebugProxy.control_ptr.debug_frame_step = 2 
+        -- Updated to route through .core namespace
+        if DebugProxy.control_ptr.core.debug_frame_step == 1 then
+            DebugProxy.control_ptr.core.debug_frame_step = 2
             print("[TIME MACHINE] Stepping One Frame...")
         end
     end
 end
 
--- 5. THE TERMINAL VISUALIZER
+-- ========================================================
+-- 6. TERMINAL VISUALIZER
+-- ========================================================
 function DebugProxy.PrintConsole()
     if not DebugProxy.IS_ACTIVE or not DebugProxy.show_ui or not DebugProxy.telemetry_ptr then return end
-
+    
     local tb = DebugProxy.telemetry_ptr
     local cb = DebugProxy.control_ptr
 
     local phase_char = (tb.current_c_phase == 0) and "A" or "B"
-    local run_state = (cb.debug_frame_step == 0) and "FREE RUN" or (cb.debug_frame_step == 1 and "PAUSED" or "STEPPING")
+    
+    -- Updated to route through .core namespace
+    local run_state = (cb.core.debug_frame_step == 0) and "FREE RUN" 
+                   or (cb.core.debug_frame_step == 1 and "PAUSED" or "STEPPING")
 
     -- Clear screen (ANSI escape code)
-    io.write("\27[2J\27[H") 
-    
+    io.write("\27[2J\27[H")
+
     print("=== VIBE ENGINE MEGALOMANIACAL TELEMETRY ===")
     print(string.format("C-Core Phase Target: [%s]", phase_char))
     print(string.format("Time Machine State:  [%s]", run_state))
     print(string.format("FFI Bridge Crossings: %d", tonumber(tb.bridge_crossings)))
-    
-    tb.bridge_crossings = 0 
+
+    tb.bridge_crossings = 0
 
     print("--------------------------------------------------")
     print(string.format("%-4s %-15s %-20s %s", "", "BUFFER", "ADDRESS", "SIZE (MB)"))
@@ -117,9 +165,9 @@ function DebugProxy.PrintConsole()
     for i = 0, 13 do
         local b = tb.buffers[i]
         local name = ffi.string(b.name)
-        
+
         local active_marker = "    "
-        if (tb.current_c_phase == 0 and name:sub(-2) == "_A") or 
+        if (tb.current_c_phase == 0 and name:sub(-2) == "_A") or
            (tb.current_c_phase == 1 and name:sub(-2) == "_B") then
             active_marker = ">>> " -- Danger: AVX2 is touching this!
         end
