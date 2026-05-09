@@ -7,6 +7,9 @@
 
 #define VIBE_MAX_USER_PARAMS 16
 
+// Force 8-byte alignment for cross-platform FFI stability
+#pragma pack(push, 8)
+
 // ========================================================================
 // 1. ASYNCHRONOUS DATA STRUCTURES
 // ========================================================================
@@ -86,5 +89,7 @@ typedef struct {
 // Global Instances
 extern EngineControlBoard g_ControlBoard;
 extern EngineTelemetryBoard g_TelemetryBoard;
+
+#pragma pack(pop) // End of packed region
 
 #endif // VIBE_CONTROL_BOARD_H

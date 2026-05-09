@@ -32,7 +32,7 @@ typedef struct {
 typedef struct {
     float x, y, z, w;
 } VertexAoS;
-
+#pragma pack(push, 8)
 // The AAA 14-Buffer Temporal Ping-Pong Setup
 typedef struct {
     PhysicsStreamSoA physics_A;
@@ -68,7 +68,7 @@ typedef struct {
     uint32_t *grid_A, *grid_B;
     VkDrawIndirectCommand *draw_cmd_A, *draw_cmd_B;
 } VramInjectionBoard;
-
+#pragma pack(pop)
 #ifdef __cplusplus
 extern "C" {
 #endif

@@ -72,8 +72,13 @@ local Params = {
 print("\n[LUA VM] Thread 5 Awoken. Binding hardware...")
 
 local t_str, c_str = C_Bridge.get_boards()
-local telemetry_ptr = ffi.cast("EngineTelemetryBoard*", tonumber(t_str))
-local control_ptr   = ffi.cast("EngineControlBoard*", tonumber(c_str))
+
+-- Parse decimal strings directly into 64-bit integers to preserve precision
+local telemetry_addr = ffi.new("uint64_t", t_str)
+local control_addr   = ffi.new("uint64_t", c_str)
+
+local telemetry_ptr = ffi.cast("EngineTelemetryBoard*", telemetry_addr)
+local control_ptr   = ffi.cast("EngineControlBoard*", control_addr)
 
 pcall(function() DebugProxy.BindHardware(telemetry_ptr, control_ptr) end)
 

@@ -92,7 +92,8 @@ VibeMemoryMap* vibe_mem_get_map(void) {
 
 void vibe_mem_ptr2str(void* ptr, char* out_buffer, size_t buffer_size) {
     if (out_buffer && buffer_size > 0) {
-        snprintf(out_buffer, buffer_size, "%p", ptr);
+        // Use %llu for a clean decimal heist across the bridge
+        snprintf(out_buffer, buffer_size, "%llu", (unsigned long long)(uintptr_t)ptr);
     }
 }
 
