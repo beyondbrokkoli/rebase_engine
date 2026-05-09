@@ -67,10 +67,14 @@ local function compile_engine(platform)
         -- os.execute(win_backend)
 
         print("\n[3/3] Compiling Vulkan Host (.exe) ...")
+
+        -- Define the LuaJIT include path for Windows
+        local LUA_INC = "C:/msys64/mingw64/include/luajit-2.1"
+
         local win_frontend = string.format(
-            -- 'gcc main.c -O3 -I"%s/Include" -L"%s/Lib" -lws2_32 -lglfw3 -lvulkan-1 -lluajit-5.1 -o swarm_gpu.exe',
-            'gcc main.c memory.c -O3 -I"%s/Include" -L"%s/Lib" -lws2_32 -lglfw3 -lvulkan-1 -lluajit-5.1 -o swarm_gpu.exe',
-            VULKAN_SDK_PATH, VULKAN_SDK_PATH
+            -- Added -I for the Lua Headers
+            'gcc main.c memory.c -O3 -I"%s/Include" -I"%s" -L"%s/Lib" -lws2_32 -lglfw3 -lvulkan-1 -lluajit-5.1 -o swarm_gpu.exe',
+            VULKAN_SDK_PATH, LUA_INC, VULKAN_SDK_PATH
         )
         os.execute(win_frontend)
         -- ==========================================
