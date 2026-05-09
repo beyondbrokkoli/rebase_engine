@@ -114,16 +114,20 @@ static int l_vibe_get_boards(lua_State* L) {
     return 2;
 }
 
-// New bridge function to receive the VRAM payload from Lua
 static int l_vibe_inject_vram(lua_State* L) {
-    // Lua passes the cdata pointer of the VramInjectionBoard
-    VramInjectionBoard* payload = (VramInjectionBoard*)lua_touserdata(L, 1);
+    // 1. Grab the decimal string from Lua
+    const char* ptr_str = luaL_checkstring(L, 1);
+    
+    // 2. Reconstruct the raw pointer from the decimal heist
+    VramInjectionBoard* payload = (VramInjectionBoard*)(uintptr_t)strtoull(ptr_str, NULL, 10);
+
     if (payload) {
         vibe_mem_inject_vram(payload);
+    } else {
+        printf("\n[C-BRIDGE ERROR] VRAM Injection Payload string was invalid: %s\n", ptr_str);
     }
     return 0;
 }
-
 static const luaL_Reg engine_funcs[] = {
     {"get_boards",  l_vibe_get_boards},
     {"inject_vram", l_vibe_inject_vram}, // The Injection Hook

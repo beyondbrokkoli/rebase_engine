@@ -88,14 +88,16 @@ end
 
 print("[LUA VM] Preparing VRAM Injection Payload...")
 
-local Anchors = {} -- GC Safety
+local Anchors = {}
 local function sim_rebar_float(n) 
     local mem = ffi.new("float[?]", n)
     table.insert(Anchors, mem)
     return ffi.cast("float*", mem) 
 end
 
-local payload = ffi.new("VramInjectionBoard")
+-- FIX: Allocate as a 1-element array to get a pointer
+local payload_ptr = ffi.new("VramInjectionBoard[1]")
+local payload = payload_ptr[0] -- Reference to the struct data
 payload.max_particles = 15000000
 local count = payload.max_particles
 
@@ -117,8 +119,8 @@ payload.grid_B   = ffi.new("uint32_t[?]", 2097152); table.insert(Anchors, payloa
 payload.draw_cmd_A = ffi.new("VkDrawIndirectCommand"); table.insert(Anchors, payload.draw_cmd_A)
 payload.draw_cmd_B = ffi.new("VkDrawIndirectCommand"); table.insert(Anchors, payload.draw_cmd_B)
 
--- THE HEIST: Send the decimal string to C
-C_Bridge.inject_vram(ptr2str(payload))
+-- THE HEIST: Pass the pointer-array (payload_ptr) to ptr2str
+C_Bridge.inject_vram(ptr2str(payload_ptr))
 
 print("[LUA VM] Injection successful. C-Core Awakened.")
 -- ========================================================
